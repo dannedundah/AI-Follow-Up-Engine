@@ -1,0 +1,81 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum LeadStatus {
+  lead
+  quote_sent
+  won
+  lost
+}
+
+enum RuleStatusTarget {
+  lead
+  quote_sent
+}
+
+enum Channel {
+  email
+}
+
+enum Tone {
+  neutral
+  friendly
+  direct
+}
+
+enum SendStatus {
+  queued
+  sent
+  failed
+}
+
+model Lead {
+  id              String       @id @default(uuid())
+  name            String
+  email           String?
+  phone           String?
+  status          LeadStatus
+  last_contact_at DateTime?
+  notes           String?
+  created_at      DateTime     @default(now())
+  updated_at      DateTime     @updatedAt
+  messages        MessageLog[]
+}
+
+model Rule {
+  id                      Int          @id @default(autoincrement())
+  applies_to_status       RuleStatusTarget
+  inactive_days_threshold Int
+  channel                 Channel
+  enabled                 Boolean      @default(true)
+  tone                    Tone
+  subject_template        String
+  prompt_template         String
+  created_at              DateTime     @default(now())
+  updated_at              DateTime     @updatedAt
+  messages                MessageLog[]
+}
+
+model MessageLog {
+  id                Int        @id @default(autoincrement())
+  lead_id           String
+  rule_id           Int?
+  channel           Channel
+  to_email          String
+  subject           String
+  body              String
+  send_status       SendStatus
+  provider_response String?
+  created_at        DateTime   @default(now())
+
+  lead Lead @relation(fields: [lead_id], references: [id], onDelete: Cascade)
+  rule Rule? @relation(fields: [rule_id], references: [id], onDelete: SetNull)
+
+  @@index([lead_id, rule_id, created_at])
+}
